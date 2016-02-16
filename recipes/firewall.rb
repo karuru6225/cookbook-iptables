@@ -8,7 +8,8 @@ template '/etc/iptables/iptables' do
   mode 00744
   variables(
     lan_net: settings['lan_net'],
-    accept_ports: settings['accept_ports']
+    accept_ports: settings['accept_ports'],
+    drop_countries: settings['drop_countries']
   )
   notifies :restart, 'service[iptables]', :delayed
 end
