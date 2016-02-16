@@ -6,11 +6,11 @@ template '/etc/iptables/iptables' do
   owner 'root'
   group 'root'
   mode 00744
-  variables(
+  variables({
     lan_net: settings['lan_net'],
     forwards: settings['forwards'],
     drop_countries: settings['drop_countries']
-  )
+  })
   notifies :restart, 'service[iptables]', :delayed
 end
 
