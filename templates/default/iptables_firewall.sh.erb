@@ -113,7 +113,7 @@ generate_rule_file(){
 	accept_settings
 	cat <<- EOC
 		-A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
-		<% @ports.each do |port| %>
+		<% @accept_ports.each do |port| %>
 			-A INPUT -p tcp -m tcp --dport <%= port %> -j ACCEPT
 		<% end %>
 		-A INPUT -j LOG --log-prefix "[IPTABLES INPUT DROP] " --log-level 7
