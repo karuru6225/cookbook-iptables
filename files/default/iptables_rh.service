@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+#       /etc/rc.d/init.d/iptables
+#
+#       generate and settings iptables
+#
+# <tags -- see below for tag definitions.  *Every line* from the top
+#  of the file to the end of the tags section must begin with a #
+#  character.  After the tags section, there should be a blank line.
+#  This keeps normal comments in the rest of the file from being
+#  mistaken for tags, should they happen to fit the pattern.>
+
+# Source function library.
+. /etc/init.d/functions
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="generate and settings iptables"
+NAME=iptables
+RULEAPPLYER=/etc/iptables/$NAME
+SCRIPTNAME=/etc/init.d/$NAME
+IPTABLES=/usr/sbin/iptables
+
+# Exit if the package is not installed
+[ -x "$RULEAPPLYER" ] || exit 0
+
+start() {
+	$RULEAPPLYER
+	return 0
+}
+
+stop() {
+	${IPTABLES} -t filter -F
+	${IPTABLES} -t filter -X
+	${IPTABLES} -t filter -Z
+	${IPTABLES} -t nat -F
+	${IPTABLES} -t nat -X
+	${IPTABLES} -t nat -Z
+	${IPTABLES} -t mangle -F
+	${IPTABLES} -t mangle -X
+	${IPTABLES} -t mangle -Z
+	${IPTABLES} -P INPUT   ACCEPT
+	${IPTABLES} -P FORWARD ACCEPT
+	${IPTABLES} -P OUTPUT  ACCEPT
+  return 0
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        ${IPTABLES} -nL
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: iptables {start|stop|status|restart}"
+        exit 1
+        ;;
+esac
+exit $?
+
+# Author: karuru6225 <e2hjhi@gmail.com>
