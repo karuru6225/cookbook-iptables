@@ -49,6 +49,7 @@ update_dalfile() {
 }
 
 drop_ssh(){
+	echo -n "drop_ssh" 1>&2
 	for cc in dummy <%= @drop_countries.join(' ') %>; do
 		if [ "${cc}" != "dummy" ];
 		then
@@ -61,6 +62,7 @@ drop_ssh(){
 }
 
 accept_ssh(){
+	echo -n "accept_ssh" 1>&2
 	ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
 	for ADDRESS in ${ADDRESSES[@]} ; do
 		echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -m hashlimit --hashlimit-name t_sshd --hashlimit 3/min --hashlimit-burst 3 -j ACCEPT"
@@ -68,6 +70,7 @@ accept_ssh(){
 }
 
 accept_only_jp(){
+	echo -n "accept_only_jp" 1>&2
 	ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
 	for ADDRESS in ${ADDRESSES[@]} ; do
 		<% @accept_only_jp.each do |port| %>
@@ -77,6 +80,7 @@ accept_only_jp(){
 }
 
 accept_all(){
+	echo -n "accept_all" 1>&2
 <% @accept_ports.each do |port| %>
 	echo "-A INPUT -p tcp -m tcp --dport <%= port %> -j ACCEPT"
 <% end %>
