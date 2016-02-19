@@ -64,6 +64,15 @@ accept_settings(){
 	done
 }
 
+accept_only_jp(){
+  ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
+  for ADDRESS in ${ADDRESSES[@]} ; do
+    for cc in dummy <%= @accept_only_jp.join(' ') %>; do
+      echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport ${cc} --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j ACCEPT"
+    done
+  done
+}
+
 set_kernel_flags() {
 
 	# TCP SYN Flood攻撃対策
