@@ -126,6 +126,7 @@ generate_rule_file(){
 	EOC
 	drop_settings
 	accept_settings
+  accept_only_jp
 	cat <<- EOC
 		-A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
 		<% @accept_ports.each do |port| %>
