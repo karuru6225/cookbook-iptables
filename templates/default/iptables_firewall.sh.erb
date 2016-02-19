@@ -7,8 +7,8 @@ set_variables() {
 	DAL_FILE="/etc/iptables/ip_list"
 	RULE_FILE="/etc/iptables/iptables.rule"
 	DENY_IP_LIST_FILE="/etc/iptables/denyIpList.txt"
-  IPURL="http://nami.jp/ipv4bycc/cidr.txt.gz"
-  DATE_REMOTE=`wget -S --spider ${IPURL} 2>&1 | grep Last-Modified`
+	IPURL="http://nami.jp/ipv4bycc/cidr.txt.gz"
+	DATE_REMOTE=`wget -S --spider ${IPURL} 2>&1 | grep Last-Modified`
 	DO_WGET=1
 }
 
@@ -43,40 +43,43 @@ update_dalfile() {
 	if [ ${DO_WGET} = 1 ];
 	then
 		echo "${DATE_REMOTE}" > "${DATE_FILE}"
-    wget -O "${DAL_FILE}".gz ${IPURL}
-    gzip -d "${DAL_FILE}".gz 
+		wget -O "${DAL_FILE}".gz ${IPURL}
+		gzip -d "${DAL_FILE}".gz 
 	fi
 }
 
-drop_settings(){
+drop_ssh(){
 	for cc in dummy <%= @drop_countries.join(' ') %>; do
-    if [ "${cc}" != "dummy" ];
-    then
-      ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^${cc}\t//p"`);
-      for ADDRESS in ${ADDRESSES[@]}; do
-        echo "-A INPUT -s ${ADDRESS} -j drop-country-${cc}"
-      done
-    fi
+		if [ "${cc}" != "dummy" ];
+		then
+			ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^${cc}\t//p"`);
+			for ADDRESS in ${ADDRESSES[@]}; do
+				echo "-A INPUT -s ${ADDRESS} -j drop-country-${cc}"
+			done
+		fi
 	done
 }
 
-accept_settings(){
-  ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
+accept_ssh(){
+	ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
 	for ADDRESS in ${ADDRESSES[@]} ; do
 		echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -m hashlimit --hashlimit-name t_sshd --hashlimit 3/min --hashlimit-burst 3 -j ACCEPT"
 	done
 }
 
 accept_only_jp(){
-  ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
-  for ADDRESS in ${ADDRESSES[@]} ; do
-    for cc in dummy <%= @accept_only_jp.join(' ') %>; do
-      if [ "${cc}" != "dummy" ];
-      then
-        echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport ${cc} --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j ACCEPT"
-      fi
-    done
-  done
+	ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
+	for ADDRESS in ${ADDRESSES[@]} ; do
+		<% @accept_only_jp.each do |port| %>
+		echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport <%= port %> --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j ACCEPT"
+		<% end %>
+	done
+}
+
+accept_all(){
+<% @accept_ports.each do |port| %>
+	echo "-A INPUT -p tcp -m tcp --dport <%= port %> -j ACCEPT"
+<% end %>
 }
 
 set_kernel_flags() {
@@ -124,14 +127,14 @@ generate_rule_file(){
 		<% end %>
 		-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 	EOC
-	drop_settings
-	accept_settings
-  accept_only_jp
+	drop_ssh
+	accept_ssh
 	cat <<- EOC
 		-A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
-		<% @accept_ports.each do |port| %>
-			-A INPUT -p tcp -m tcp --dport <%= port %> -j ACCEPT
-		<% end %>
+	EOC
+	accept_only_jp
+	accept_all
+	cat <<- EOC
 		-A INPUT -j LOG --log-prefix "[IPTABLES INPUT DROP] " --log-level 7
 		-A drop-cntry -j LOG --log-prefix "[IPTABLES CONTRY DROP] " --log-level 7
 		-A drop-cntry -j DROP
