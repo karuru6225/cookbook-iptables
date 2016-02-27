@@ -1,3 +1,4 @@
+default['iptables']['upnp'] = false
 default['iptables']['lan_net'] = ''
 default['iptables']['drop_countries'] = []
 default['iptables']['forwards'] = []
