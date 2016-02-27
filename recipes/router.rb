@@ -1,7 +1,8 @@
 include_recipe "iptables::common"
 
-settings = node['iptables'] ||
-           Chef::EncryptedDataBagItem.load('iptables', 'settings')
+settings = Chef::EncryptedDataBagItem.load('iptables', 'settings') ||
+           node['iptables']
+
 template '/etc/iptables/iptables' do
   source 'iptables_router.sh.erb'
   owner 'root'
@@ -15,7 +16,7 @@ template '/etc/iptables/iptables' do
   notifies :restart, 'service[iptables]', :delayed
 end
 
-if node['iptables']['upnp']
+if settings['upnp']
   package 'linux-igd' do
     action :install
   end
