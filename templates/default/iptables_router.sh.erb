@@ -48,7 +48,16 @@ update_dalfile() {
 	fi
 }
 
-drop_settings(){
+drop_country(){
+  echo "drop country" 1>&2
+# 拒否国別のターゲット作成
+  <% @drop_countries.each do |cc| %>
+  :drop-country-<%= cc %> - [0:0]
+  -A drop-country-<%= cc %> -j LOG --log-prefix "[IPTABLES COUNTRY-<%= cc %> DROP] " --log-level 7
+  -A drop-country-<%= cc %> -j DROP
+  <% end %>
+
+# 拒否国別にターゲットへジャンプ
 	for cc in <%= @drop_countries.join(' ') %>; do
     ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^${cc}\t//p"`);
 		for ADDRESS in ${ADDRESSES[@]}; do
@@ -57,11 +66,19 @@ drop_settings(){
 	done
 }
 
-accept_settings(){
+accept_ssh(){
+  echo "accept settings" 1>&2
   ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
 	for ADDRESS in ${ADDRESSES[@]} ; do
 		echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -m hashlimit --hashlimit-name t_sshd --hashlimit 3/min --hashlimit-burst 3 -j ACCEPT"
 	done
+}
+
+forward_settings(){
+  echo "forward settings" 1>&2
+  <% @forwards.each do |sport, dest| %>
+  -A PREROUTING -i ppp0 -p tcp -m tcp --dport <%= sport %> -j DNAT --to-destination <%= dest %>
+  <% end %>
 }
 
 set_kernel_flags() {
@@ -93,18 +110,15 @@ generate_rule_file(){
 		:INPUT ACCEPT [0:0]
 		:OUTPUT ACCEPT [0:0]
 		:POSTROUTING ACCEPT [0:0]
-		<% @forwards.each do |sport, dest| %>
-		-A PREROUTING -i ppp0 -p tcp -m tcp --dport <%= sport %> -j DNAT --to-destination <%= dest %>
-		<% end %>
+	EOC
+  forward_settings
+	cat <<- EOC
     -A POSTROUTING -s <%= @lan_net %> -o ppp0 -j MASQUERADE
 		COMMIT
 		*filter
 		:INPUT DROP [0:0]
 		:FORWARD ACCEPT [0:0]
 		:OUTPUT ACCEPT [0:0]
-		<% @drop_countries.each do |cc| %>
-		:drop-country-<%= cc %> - [0:0]
-		<% end %>
 		:fragment - [0:0]
 		:net-bios - [0:0]
 		-A INPUT -s 10.0.0.0/8 -i ppp0 -j DROP
@@ -117,8 +131,8 @@ generate_rule_file(){
 		-A INPUT -i br0 -j ACCEPT
 		-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 	EOC
-	drop_settings
-	accept_settings
+	drop_country
+	accept_ssh
 	cat <<- EOC
 		-A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
 		-A FORWARD -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
@@ -126,10 +140,6 @@ generate_rule_file(){
 		-A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 		-A OUTPUT -o ppp0 -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
 		-A OUTPUT -o ppp0 -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
-		<% @drop_countries.each do |cc| %>
-		-A drop-country-<%= cc %> -j LOG --log-prefix "[IPTABLES COUNTRY-<%= cc %> DROP] " --log-level 7
-		-A drop-country-<%= cc %> -j DROP
-		<% end %>
 		-A fragment -j LOG --log-prefix "[IPTABLES fragment DROP] " --log-level 7
 		-A fragment -j DROP
 		-A net-bios -j LOG --log-prefix "[IPTABLES NetBIOS DROP] " --log-level 7
