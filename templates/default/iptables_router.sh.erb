@@ -52,9 +52,9 @@ drop_country(){
   echo "drop country" 1>&2
 # 拒否国別のターゲット作成
   <% @drop_countries.each do |cc| %>
-  :drop-country-<%= cc %> - [0:0]
-  -A drop-country-<%= cc %> -j LOG --log-prefix "[IPTABLES COUNTRY-<%= cc %> DROP] " --log-level 7
-  -A drop-country-<%= cc %> -j DROP
+  ":drop-country-<%= cc %> - [0:0]"
+  "-A drop-country-<%= cc %> -j LOG --log-prefix "[IPTABLES COUNTRY-<%= cc %> DROP] " --log-level 7"
+  "-A drop-country-<%= cc %> -j DROP"
   <% end %>
 
 # 拒否国別にターゲットへジャンプ
@@ -77,7 +77,7 @@ accept_ssh(){
 forward_settings(){
   echo "forward settings" 1>&2
   <% @forwards.each do |sport, dest| %>
-  -A PREROUTING -i ppp0 -p tcp -m tcp --dport <%= sport %> -j DNAT --to-destination <%= dest %>
+  echo "-A PREROUTING -i ppp0 -p tcp -m tcp --dport <%= sport %> -j DNAT --to-destination <%= dest %>"
   <% end %>
 }
 
