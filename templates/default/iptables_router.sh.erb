@@ -52,9 +52,9 @@ drop_country(){
   echo "drop country" 1>&2
 # 拒否国別のターゲット作成
   <% @drop_countries.each do |cc| %>
-  ":drop-country-<%= cc %> - [0:0]"
-  "-A drop-country-<%= cc %> -j LOG --log-prefix "[IPTABLES COUNTRY-<%= cc %> DROP] " --log-level 7"
-  "-A drop-country-<%= cc %> -j DROP"
+  echo ":drop-country-<%= cc %> - [0:0]"
+  echo "-A drop-country-<%= cc %> -j LOG --log-prefix "[IPTABLES COUNTRY-<%= cc %> DROP] " --log-level 7"
+  echo "-A drop-country-<%= cc %> -j DROP"
   <% end %>
 
 # 拒否国別にターゲットへジャンプ
