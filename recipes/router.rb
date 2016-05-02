@@ -10,8 +10,10 @@ template '/etc/iptables/iptables' do
   mode 00744
   variables(
     lan_net: settings['lan_net'],
-    forwards: settings['forwards'],
-    drop_countries: settings['drop_countries']
+    forwards: settings['forwards'] || {},
+    drop_countries: settings['drop_countries'] || [],
+    filter_others: settings['filter_others'] || [],
+    nat_others: settings['nat_others'] || []
   )
   notifies :restart, 'service[iptables]', :delayed
 end

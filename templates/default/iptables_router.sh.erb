@@ -103,6 +103,20 @@ set_kernel_flags() {
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 }
 
+nat_other() {
+  echo "nat other" 1>&2
+  <% @nat_others.each do |setting| %>
+  echo "<%= setting %>"
+  <% end %>
+}
+
+filter_other() {
+  echo "filter other" 1>&2
+  <% @filter_others.each do |setting| %>
+  echo "<%= setting %>"
+  <% end %>
+}
+
 generate_rule_file(){
 	cat <<- EOC
 		*nat
@@ -112,6 +126,7 @@ generate_rule_file(){
 		:POSTROUTING ACCEPT [0:0]
 	EOC
   forward_settings
+	nat_other
 	cat <<- EOC
     -A POSTROUTING -s <%= @lan_net %> -o ppp0 -j MASQUERADE
 		COMMIT
@@ -133,6 +148,7 @@ generate_rule_file(){
 	EOC
 	drop_country
 	accept_ssh
+	filter_other
 	cat <<- EOC
 		-A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
 		-A FORWARD -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
