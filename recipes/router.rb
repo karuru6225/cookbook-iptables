@@ -14,6 +14,7 @@ template '/etc/iptables/iptables' do
     forwards: settings['forwards'] || {},
     drop_countries: settings['drop_countries'] || [],
     filter_others: settings['filter_others'] || [],
+    additional_chains: settings['additional_chains'] || [],
     nat_others: settings['nat_others'] || []
   )
   notifies :restart, 'service[iptables]', :delayed

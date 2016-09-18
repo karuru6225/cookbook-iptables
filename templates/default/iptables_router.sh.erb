@@ -119,6 +119,15 @@ filter_other() {
   <% end %>
 }
 
+additional_chains() {
+  echo "additional targets" 1>&2
+  echo "-N fragment"
+  echo "-N net-bios"
+  <% @additional_chains.each do |chain| %>
+    echo "-N <%= chain %>"
+  <% end %>
+}
+
 generate_rule_file(){
   cat <<- EOC
     *nat
@@ -136,8 +145,9 @@ generate_rule_file(){
     :INPUT DROP [0:0]
     :FORWARD ACCEPT [0:0]
     :OUTPUT ACCEPT [0:0]
-    :fragment - [0:0]
-    :net-bios - [0:0]
+  EOC
+  additional_chains
+  cat <<- EOC
     -A INPUT -s 10.0.0.0/8 -i ${WAN_IF} -j DROP
     -A INPUT -s 172.16.0.0/12 -i ${WAN_IF} -j DROP
     -A INPUT -s ${LAN_NET} -i ${WAN_IF} -j DROP
