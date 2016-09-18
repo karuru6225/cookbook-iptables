@@ -9,6 +9,7 @@ template '/etc/iptables/iptables' do
   group 'root'
   mode 00744
   variables(
+    wan_if: settings['wan_if'],
     lan_net: settings['lan_net'],
     forwards: settings['forwards'] || {},
     drop_countries: settings['drop_countries'] || [],

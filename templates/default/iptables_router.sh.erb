@@ -3,49 +3,51 @@ echo "Start NetFilter Setting....";
 
 # 各種変数の設定
 set_variables() {
-	DATE_FILE="/etc/iptables/ip_list_date"
-	DAL_FILE="/etc/iptables/ip_list"
-	RULE_FILE="/etc/iptables/iptables.rule"
-	DENY_IP_LIST_FILE="/etc/iptables/denyIpList.txt"
+  DATE_FILE="/etc/iptables/ip_list_date"
+  DAL_FILE="/etc/iptables/ip_list"
+  RULE_FILE="/etc/iptables/iptables.rule"
+  DENY_IP_LIST_FILE="/etc/iptables/denyIpList.txt"
   IPURL="http://nami.jp/ipv4bycc/cidr.txt.gz"
   DATE_REMOTE=`wget -S --spider ${IPURL} 2>&1 | grep Last-Modified`
-	DO_WGET=1
+  DO_WGET=1
+  WAN_IF="<%= @wan_if %>"
+  LAN_NET="<%= @lan_net %>"
 }
 
 update_dalfile() {
-	echo -n "check dal_file..." 1>&2
-	if [ -e "${DAL_FILE}" ];
-	then
-		echo "exist"
-		echo -n "check date_file..." 1>&2
-		if [ -e "${DATE_FILE}" ];
-		then
-			echo "exist"
-			DATE_LOCAL=`cat ${DATE_FILE}`
-			echo -n "check update..." 1>&2
-			echo `date +"%R %F"`
-			echo "remote:${DATE_REMOTE}"
-			echo "local :${DATE_LOCAL}"
-			if [ "${DATE_REMOTE}" != "${DATE_LOCAL}" ];
-			then
-				echo "update"
-			else
-				echo "not update"
-				DO_WGET=0
-			fi
-		else
-			echo "not exist"
-		fi
-	else
-		echo "not exist"
-	fi
-	
-	if [ ${DO_WGET} = 1 ];
-	then
-		echo "${DATE_REMOTE}" > "${DATE_FILE}"
+  echo -n "check dal_file..." 1>&2
+  if [ -e "${DAL_FILE}" ];
+  then
+    echo "exist"
+    echo -n "check date_file..." 1>&2
+    if [ -e "${DATE_FILE}" ];
+    then
+      echo "exist"
+      DATE_LOCAL=`cat ${DATE_FILE}`
+      echo -n "check update..." 1>&2
+      echo `date +"%R %F"`
+      echo "remote:${DATE_REMOTE}"
+      echo "local :${DATE_LOCAL}"
+      if [ "${DATE_REMOTE}" != "${DATE_LOCAL}" ];
+      then
+        echo "update"
+      else
+        echo "not update"
+        DO_WGET=0
+      fi
+    else
+      echo "not exist"
+    fi
+  else
+    echo "not exist"
+  fi
+  
+  if [ ${DO_WGET} = 1 ];
+  then
+    echo "${DATE_REMOTE}" > "${DATE_FILE}"
     wget -O "${DAL_FILE}".gz ${IPURL}
     gzip -d "${DAL_FILE}".gz 
-	fi
+  fi
 }
 
 drop_country(){
@@ -58,49 +60,49 @@ drop_country(){
   <% end %>
 
 # 拒否国別にターゲットへジャンプ
-	for cc in <%= @drop_countries.join(' ') %>; do
+  for cc in <%= @drop_countries.join(' ') %>; do
     ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^${cc}\t//p"`);
-		for ADDRESS in ${ADDRESSES[@]}; do
-			echo "-A INPUT -s ${ADDRESS} -j drop-country-${cc}"
-		done
-	done
+    for ADDRESS in ${ADDRESSES[@]}; do
+      echo "-A INPUT -s ${ADDRESS} -j drop-country-${cc}"
+    done
+  done
 }
 
 accept_ssh(){
   echo "accept settings" 1>&2
   ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
-	for ADDRESS in ${ADDRESSES[@]} ; do
-		echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -m hashlimit --hashlimit-name t_sshd --hashlimit 3/min --hashlimit-burst 3 -j ACCEPT"
-	done
+  for ADDRESS in ${ADDRESSES[@]} ; do
+    echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -m hashlimit --hashlimit-name t_sshd --hashlimit 3/min --hashlimit-burst 3 -j ACCEPT"
+  done
 }
 
 forward_settings(){
   echo "forward settings" 1>&2
   <% @forwards.each do |sport, dest| %>
-  echo "-A PREROUTING -i ppp0 -p tcp -m tcp --dport <%= sport %> -j DNAT --to-destination <%= dest %>"
+  echo "-A PREROUTING -i ${WAN_IF} -p tcp -m tcp --dport <%= sport %> -j DNAT --to-destination <%= dest %>"
   <% end %>
 }
 
 set_kernel_flags() {
 
-	# TCP SYN Flood攻撃対策
-	echo 1 > /proc/sys/net/ipv4/tcp_syncookies
-	
-	# Smurf攻撃対策
-	# 送信元を偽装したブロードキャスト宛のpingによる攻撃への対策
-	echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
-	
-	# ICMP Redirectパケットを破棄
-	echo 0 > /proc/sys/net/ipv4/conf/all/accept_redirects
-	
-	# Source-routedパケットの破棄
-	echo 0 > /proc/sys/net/ipv4/conf/all/accept_source_route
-	
-	# IP Spoofing攻撃対策
-	echo 1 > /proc/sys/net/ipv4/conf/all/rp_filter
-	
-	# パケットの転送を有効にする
-	echo 1 > /proc/sys/net/ipv4/ip_forward
+  # TCP SYN Flood攻撃対策
+  echo 1 > /proc/sys/net/ipv4/tcp_syncookies
+  
+  # Smurf攻撃対策
+  # 送信元を偽装したブロードキャスト宛のpingによる攻撃への対策
+  echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+  
+  # ICMP Redirectパケットを破棄
+  echo 0 > /proc/sys/net/ipv4/conf/all/accept_redirects
+  
+  # Source-routedパケットの破棄
+  echo 0 > /proc/sys/net/ipv4/conf/all/accept_source_route
+  
+  # IP Spoofing攻撃対策
+  echo 1 > /proc/sys/net/ipv4/conf/all/rp_filter
+  
+  # パケットの転送を有効にする
+  echo 1 > /proc/sys/net/ipv4/ip_forward
 }
 
 nat_other() {
@@ -118,65 +120,65 @@ filter_other() {
 }
 
 generate_rule_file(){
-	cat <<- EOC
-		*nat
-		:PREROUTING ACCEPT [0:0]
-		:INPUT ACCEPT [0:0]
-		:OUTPUT ACCEPT [0:0]
-		:POSTROUTING ACCEPT [0:0]
-	EOC
+  cat <<- EOC
+    *nat
+    :PREROUTING ACCEPT [0:0]
+    :INPUT ACCEPT [0:0]
+    :OUTPUT ACCEPT [0:0]
+    :POSTROUTING ACCEPT [0:0]
+  EOC
   forward_settings
-	nat_other
-	cat <<- EOC
-    -A POSTROUTING -s <%= @lan_net %> -o ppp0 -j MASQUERADE
-		COMMIT
-		*filter
-		:INPUT DROP [0:0]
-		:FORWARD ACCEPT [0:0]
-		:OUTPUT ACCEPT [0:0]
-		:fragment - [0:0]
-		:net-bios - [0:0]
-		-A INPUT -s 10.0.0.0/8 -i ppp0 -j DROP
-		-A INPUT -s 172.16.0.0/12 -i ppp0 -j DROP
-		-A INPUT -s <%= @lan_net %> -i ppp0 -j DROP
-		-A INPUT -f -j fragment
-		-A INPUT -p icmp -j ACCEPT
-		-A INPUT -i lo -j ACCEPT
-		-A INPUT -s 127.0.0.1/32 -j ACCEPT
-		-A INPUT -i br0 -j ACCEPT
-		-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-	EOC
-	drop_country
-	accept_ssh
-	filter_other
-	cat <<- EOC
-		-A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
-		-A FORWARD -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
-		-A FORWARD -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
-		-A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
-		-A OUTPUT -o ppp0 -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
-		-A OUTPUT -o ppp0 -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
-		-A fragment -j LOG --log-prefix "[IPTABLES fragment DROP] " --log-level 7
-		-A fragment -j DROP
-		-A net-bios -j LOG --log-prefix "[IPTABLES NetBIOS DROP] " --log-level 7
-		-A net-bios -j DROP
-		COMMIT
-		*mangle
-		:PREROUTING ACCEPT [0:0]
-		:INPUT ACCEPT [0:0]
-		:FORWARD ACCEPT [0:0]
-		:OUTPUT ACCEPT [0:0]
-		:POSTROUTING ACCEPT [0:0]
-		COMMIT
-	EOC
+  nat_other
+  cat <<- EOC
+  -A POSTROUTING -s ${LAN_NET} -o ${WAN_IF} -j MASQUERADE
+    COMMIT
+    *filter
+    :INPUT DROP [0:0]
+    :FORWARD ACCEPT [0:0]
+    :OUTPUT ACCEPT [0:0]
+    :fragment - [0:0]
+    :net-bios - [0:0]
+    -A INPUT -s 10.0.0.0/8 -i ${WAN_IF} -j DROP
+    -A INPUT -s 172.16.0.0/12 -i ${WAN_IF} -j DROP
+    -A INPUT -s ${LAN_NET} -i ${WAN_IF} -j DROP
+    -A INPUT -f -j fragment
+    -A INPUT -p icmp -j ACCEPT
+    -A INPUT -i lo -j ACCEPT
+    -A INPUT -s 127.0.0.1/32 -j ACCEPT
+    -A INPUT -i br0 -j ACCEPT
+    -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+  EOC
+  drop_country
+  accept_ssh
+  filter_other
+  cat <<- EOC
+    -A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
+    -A FORWARD -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
+    -A FORWARD -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
+    -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+    -A OUTPUT -o ${WAN_IF} -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
+    -A OUTPUT -o ${WAN_IF} -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
+    -A fragment -j LOG --log-prefix "[IPTABLES fragment DROP] " --log-level 7
+    -A fragment -j DROP
+    -A net-bios -j LOG --log-prefix "[IPTABLES NetBIOS DROP] " --log-level 7
+    -A net-bios -j DROP
+    COMMIT
+    *mangle
+    :PREROUTING ACCEPT [0:0]
+    :INPUT ACCEPT [0:0]
+    :FORWARD ACCEPT [0:0]
+    :OUTPUT ACCEPT [0:0]
+    :POSTROUTING ACCEPT [0:0]
+    COMMIT
+  EOC
 }
 
 update() {
-	set_kernel_flags
-	echo "generate_rule_file"
-	generate_rule_file > ${RULE_FILE}
-	echo "iptables-restore"
-	iptables-restore < ${RULE_FILE}
+  set_kernel_flags
+  echo "generate_rule_file"
+  generate_rule_file > ${RULE_FILE}
+  echo "iptables-restore"
+  iptables-restore < ${RULE_FILE}
 }
 
 set_variables
