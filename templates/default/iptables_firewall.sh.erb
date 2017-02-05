@@ -48,6 +48,24 @@ update_dalfile() {
 	fi
 }
 
+drop_country(){
+  echo "drop country" 1>&2
+# 拒否国別のターゲット作成
+  <% @drop_countries.each do |cc| %>
+  echo ":drop-country-<%= cc %> - [0:0]"
+  echo "-A drop-country-<%= cc %> -j LOG --log-prefix \"[IPTABLES COUNTRY-<%= cc %> DROP] \" --log-level 7"
+  echo "-A drop-country-<%= cc %> -j DROP"
+  <% end %>
+
+# 拒否国別にターゲットへジャンプ
+  for cc in <%= @drop_countries.join(' ') %>; do
+    ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^${cc}\t//p"`);
+    for ADDRESS in ${ADDRESSES[@]}; do
+      echo "-A INPUT -s ${ADDRESS} -j drop-country-${cc}"
+    done
+  done
+}
+
 drop_ssh(){
 	echo -n "drop_ssh" 1>&2
 	for cc in dummy <%= @drop_countries.join(' ') %>; do
@@ -73,6 +91,7 @@ accept_only_jp(){
 	echo -n "accept_only_jp" 1>&2
 	ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
 	for ADDRESS in ${ADDRESSES[@]} ; do
+		:
 		<% @accept_only_jp.each do |port| %>
 		echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport <%= port %> --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j ACCEPT"
 		<% end %>
@@ -120,7 +139,6 @@ COMMIT
 :INPUT DROP [0:0]
 :FORWARD ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
-:drop-cntry - [0:0]
 :fragment - [0:0]
 -A INPUT -f -j fragment
 -A INPUT -p icmp -j ACCEPT
@@ -131,6 +149,7 @@ COMMIT
 <% end %>
 -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 EOC
+drop_country
 	drop_ssh
 	accept_ssh
 cat <<- EOC
@@ -140,8 +159,6 @@ EOC
 	accept_all
 cat <<- EOC
 -A INPUT -j LOG --log-prefix "[IPTABLES INPUT DROP] " --log-level 7
--A drop-cntry -j LOG --log-prefix "[IPTABLES CONTRY DROP] " --log-level 7
--A drop-cntry -j DROP
 -A fragment -j LOG --log-prefix "[IPTABLES fragment DROP] " --log-level 7
 -A fragment -j DROP
 COMMIT
