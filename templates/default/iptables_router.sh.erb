@@ -129,58 +129,58 @@ additional_chains() {
 }
 
 generate_rule_file(){
-  cat <<- EOC
-    *nat
-    :PREROUTING ACCEPT [0:0]
-    :INPUT ACCEPT [0:0]
-    :OUTPUT ACCEPT [0:0]
-    :POSTROUTING ACCEPT [0:0]
-  EOC
+cat <<- EOC
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+EOC
   forward_settings
   nat_other
-  cat <<- EOC
-  -A POSTROUTING -s ${LAN_NET} -o ${WAN_IF} -j MASQUERADE
-    COMMIT
-    *filter
-    :INPUT DROP [0:0]
-    :FORWARD ACCEPT [0:0]
-    :OUTPUT ACCEPT [0:0]
-  EOC
+cat <<- EOC
+-A POSTROUTING -s ${LAN_NET} -o ${WAN_IF} -j MASQUERADE
+COMMIT
+*filter
+:INPUT DROP [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+EOC
   additional_chains
-  cat <<- EOC
-    -A INPUT -s 10.0.0.0/8 -i ${WAN_IF} -j DROP
-    -A INPUT -s 172.16.0.0/12 -i ${WAN_IF} -j DROP
-    -A INPUT -s ${LAN_NET} -i ${WAN_IF} -j DROP
-    -A INPUT -f -j fragment
-    -A INPUT -p icmp -j ACCEPT
-    -A INPUT -i lo -j ACCEPT
-    -A INPUT -s 127.0.0.1/32 -j ACCEPT
-    -A INPUT -i br0 -j ACCEPT
-    -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-  EOC
+cat <<- EOC
+-A INPUT -s 10.0.0.0/8 -i ${WAN_IF} -j DROP
+-A INPUT -s 172.16.0.0/12 -i ${WAN_IF} -j DROP
+-A INPUT -s ${LAN_NET} -i ${WAN_IF} -j DROP
+-A INPUT -f -j fragment
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -s 127.0.0.1/32 -j ACCEPT
+-A INPUT -i br0 -j ACCEPT
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+EOC
   drop_country
   accept_ssh
   filter_other
-  cat <<- EOC
-    -A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
-    -A FORWARD -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
-    -A FORWARD -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
-    -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
-    -A OUTPUT -o ${WAN_IF} -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
-    -A OUTPUT -o ${WAN_IF} -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
-    -A fragment -j LOG --log-prefix "[IPTABLES fragment DROP] " --log-level 7
-    -A fragment -j DROP
-    -A net-bios -j LOG --log-prefix "[IPTABLES NetBIOS DROP] " --log-level 7
-    -A net-bios -j DROP
-    COMMIT
-    *mangle
-    :PREROUTING ACCEPT [0:0]
-    :INPUT ACCEPT [0:0]
-    :FORWARD ACCEPT [0:0]
-    :OUTPUT ACCEPT [0:0]
-    :POSTROUTING ACCEPT [0:0]
-    COMMIT
-  EOC
+cat <<- EOC
+-A INPUT -p tcp -m tcp --dport 22 --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
+-A FORWARD -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
+-A FORWARD -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
+-A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+-A OUTPUT -o ${WAN_IF} -p tcp -m multiport --dports 135,137,138,139,445 -j net-bios
+-A OUTPUT -o ${WAN_IF} -p udp -m multiport --dports 135,137,138,139,445 -j net-bios
+-A fragment -j LOG --log-prefix "[IPTABLES fragment DROP] " --log-level 7
+-A fragment -j DROP
+-A net-bios -j LOG --log-prefix "[IPTABLES NetBIOS DROP] " --log-level 7
+-A net-bios -j DROP
+COMMIT
+*mangle
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+COMMIT
+EOC
 }
 
 update() {
