@@ -91,6 +91,7 @@ accept_only_jp(){
 	echo -n "accept_only_jp" 1>&2
 	ADDRESSES=(`cat "${DAL_FILE}" | sed -n "s/^JP\t//p"`);
 	for ADDRESS in ${ADDRESSES[@]} ; do
+		:
 		<% @accept_only_jp.each do |port| %>
 		echo "-A INPUT -s ${ADDRESS} -p tcp -m tcp --dport <%= port %> --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j ACCEPT"
 		<% end %>
